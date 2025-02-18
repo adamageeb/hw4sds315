@@ -1,0 +1,174 @@
+---
+title: "Adam_Ageeb_HW_4"
+author: "Adam Ageeb"
+date: "2025-02-17"
+output: html_document
+---
+# Adam Ageeb
+## UT EID ara4629
+### GitHub Link: https://github.com/adamageeb/hw4sds315 
+
+### Problem 1
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(mosaic)
+library(ggplot2)
+sim_sec = do(100000)*nflip(n=2021, prob=0.024)
+ggplot(sim_sec) + geom_histogram(aes(x=nflip), binwidth=1)
+sum(sim_sec >= 70)/100000
+```
+
+Null Hypothesis:
+The null hypothesis is that the 70 flagged trades from Iron Bank employees are consistent with the baseline rate of 2.4%, meaning they could have occurred by random chance.
+
+Test Statistic:
+We used the p-value as the test statistic, which measures the probability of observing 70 or more flagged trades under the null hypothesis.
+
+Monte Carlo Simulation:
+We performed a simulation with 100,000 trials, each with 2.4% flagging probability over 2021 trades, to compute the distribution of flagged trades under the null hypothesis.
+
+Simulation Results:
+The p-value from the simulation was 0.002 (or 0.2%), indicating that observing 70 flagged trades is highly unlikely under the null hypothesis.
+
+Conclusion:
+With a p-value of 0.002, we reject the null hypothesis. The flagged trades are unlikely to have occurred by chance, suggesting the need for further investigation.
+
+
+### Problem 2
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+sim_health = do(100000)*nflip(n=50, prob=0.03)
+ggplot(sim_health) + geom_histogram(aes(x=nflip), binwidth=1)
+sum(sim_health >= 8)/100000
+```
+
+Null Hypothesis:
+The null hypothesis is that the 8 health code violations out of 50 inspections for Gourmet Bites are consistent with the citywide average of 3% violations, meaning they could have occurred by random chance.
+
+Test Statistic:
+We used the p-value as the test statistic, which measures the probability of observing 8 or more violations under the null hypothesis.
+
+Monte Carlo Simulation:
+We performed a simulation with 100,000 trials, each with a 3% chance of a violation per inspection, to compute the distribution of violations under the null hypothesis.
+
+Simulation Results:
+The p-value from the simulation was 0.00014 (or 0.014%), meaning that observing 8 or more violations is extremely unlikely under the 3% violation rate.
+
+Conclusion:
+With a p-value of 0.00014, we reject the null hypothesis. The observed rate of violations is significantly higher than expected under the baseline 3% rate, suggesting that Gourmet Bites may have a higher-than-average rate of health code violations.
+
+
+### Problem 3
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+expected_distribution = c(group1 = 0.30, group2 = 0.25, group3 = 0.20, group4 = 0.15, group5 = 0.10)
+observed_counts =  c(group1 = 85, group2 = 56, group3 = 59, group4 = 27, group5 = 13)
+tibble(observed = observed_counts, expected = expected_distribution*240)
+
+num_jurors = 240
+simulated_counts = rmultinom(1, num_jurors, expected_distribution)
+
+simulated_counts - num_jurors*expected_distribution
+
+chi_squared_statistic = function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+
+chi2 = chi_squared_statistic(simulated_counts, num_jurors*expected_distribution)
+chi2
+
+num_simulations = 100000
+chi2_sim = do(num_simulations)*{
+  simulated_counts = rmultinom(1, num_jurors, expected_distribution)
+  this_chi2 = chi_squared_statistic(simulated_counts, num_jurors*expected_distribution)
+  c(chi2 = this_chi2)
+}
+
+ggplot(chi2_sim) + 
+  geom_histogram(aes(x=chi2))
+
+my_chi2 = chi_squared_statistic(observed_counts, num_jurors*expected_distribution)
+my_chi2
+
+sum(chi2_sim >= my_chi2)/100000
+```
+
+Null Hypothesis:
+The null hypothesis is that the distribution of jurors empaneled by the judge reflects the same racial/ethnic proportions as the county's eligible jury population. Specifically:
+
+H₀: The proportions of jurors from each group (Group 1 through Group 5) match the county's population proportions:
+Group 1 = 30%, Group 2 = 25%, Group 3 = 20%, Group 4 = 15%, Group 5 = 10%.
+
+Test Statistic:
+We used the chi-square test to compare the observed counts of jurors in each group to the expected counts based on the county's proportions. The chi-square test statistic was calculated as 12.42639.
+
+P-value:
+The p-value from the chi-square test was 0.01433 (or 1.4%). This represents the probability of observing a discrepancy at least as extreme as the one observed, assuming the null hypothesis is true.
+
+Conclusion:
+With a p-value of 0.01433, which is less than the typical significance level of 0.05, we reject the null hypothesis. This suggests that the distribution of jurors empaneled by this judge is significantly different from the county's population proportions, providing evidence that the jury selection may be biased.
+
+Other Explanations for Bias:
+While the results suggest potential bias in jury selection, it is important to consider other factors that could influence the composition of the juries. For example:
+
+Exemptions: Some individuals may be automatically exempted from jury service (e.g., non-citizens, individuals with disabilities, or those with prior felony convictions in some states).
+Hardship Exemptions: Others may be excused due to personal hardship (e.g., sole caregivers, financial hardship, or work-related exemptions).
+These factors may correlate with race or ethnicity, leading to under representation or over representation of certain groups on the jury. Further investigation into these factors, as well as a larger sample size, could help clarify whether the discrepancies are due to systematic bias or other demographic factors affecting eligibility for jury service.
+
+
+### Problem 4
+
+#### Part A
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+letter_frequencies <- read.csv("letter_frequencies.csv")
+calculate_chi_squared <- function(sentence, freq_table) {
+  clean_sentence <- gsub("[^A-Za-z]", "", sentence)
+  clean_sentence <- toupper(clean_sentence)
+  observed_counts <- table(factor(strsplit(clean_sentence, "")[[1]], levels = freq_table$Letter))
+  total_letters <- sum(observed_counts)
+  expected_counts <- total_letters * freq_table$Probability
+  expected_counts[expected_counts == 0] <- 1
+  chi_squared_stat <- sum((observed_counts - expected_counts)^2 / expected_counts)
+  return(chi_squared_stat)
+}
+sentences <- readLines("brown_sentences.txt")
+chi_squared_values <- sapply(sentences, calculate_chi_squared, freq_table = letter_frequencies)
+write.csv(chi_squared_values, "chi_squared_null_distribution.csv", row.names = FALSE)
+hist(chi_squared_values, breaks = 50, main = "Chi-Squared Null Distribution", xlab = "Chi-Squared Statistic")
+```
+
+#### Part B
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
+null_distribution <- read.csv("chi_squared_null_distribution.csv")
+test_sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+test_chi_squared <- sapply(test_sentences, calculate_chi_squared, freq_table = letter_frequencies)
+p_values <- sapply(test_chi_squared, function(x) mean(null_distribution >= x))
+results <- data.frame(
+  Sentence = 1:10,
+  Chi_Squared = round(test_chi_squared, 3),
+  P_Value = round(p_values, 3)
+)
+print(results)
+anomalous_sentence_index <- which.min(p_values)
+print(anomalous_sentence_index)
+```
+
+The most anomalous sentence is Sentence 6:
+"Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland."
+
+How do I know?
+This sentence had the lowest p-value, meaning its letter frequencies deviated the most from normal English text. The presence of unusual words like "vexed," "zany," and "arduous" suggests an intentional shift in letter distribution, likely as a watermark.
